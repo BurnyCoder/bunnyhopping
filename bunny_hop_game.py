@@ -142,7 +142,7 @@ class Game:
         window.exit_button.visible = False
         window.fps_counter.enabled = True
         
-        # Fog is now disabled
+        # Fog 
         # scene.fog_color = color.rgb(150, 170, 200)
         # scene.fog_density = 0.01
         
@@ -263,9 +263,7 @@ class Game:
             self.player.position.z
         )
     
-    def create_procedural_environment(self):
-        # Remove the boundary walls to allow infinite movement
-        
+    def create_procedural_environment(self):        
         # Store all generated chunks
         self.chunks = {}
         self.chunk_size = 40  # Size of each terrain chunk
