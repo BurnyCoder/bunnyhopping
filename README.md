@@ -31,12 +31,20 @@ python bunny_hop_game.py
 
 ## Game Mechanics
 
-Bunnyhopping is a movement technique where continuous jumping increases your movement speed. By holding space while moving, your character will automatically jump repeatedly, and each jump increases your speed multiplier. The speed boost decays if you stop jumping or stop moving.
+Bunnyhopping is a movement technique where continuous jumping increases your movement speed. In this game:
+
+1. Hold space bar while moving to perform bunny hops
+2. Each consecutive jump increases your speed multiplier
+3. Consecutive jumps receive a bigger speed boost than the first jump
+4. The speed boost applies while moving in any direction
+5. Your speed bonus decays if you stop jumping or stop moving
+
+The key to achieving maximum speed is to time your jumps perfectly - try to jump immediately after landing!
 
 ## Features
 
 - First-person perspective
-- Bunnyhopping mechanics with speed boost
+- Bunnyhopping mechanics with progressive speed boost
 - Speed counter and multiplier display
 - Simple 3D environment with obstacles
 
@@ -45,15 +53,14 @@ Bunnyhopping is a movement technique where continuous jumping increases your mov
 1. Run the game
 2. Use WASD to move and the mouse to look around
 3. To bunnyhop, hold W (or any movement key) and **hold** the space bar
-4. Try to achieve the highest speed possible!
+4. Try to jump in a rhythm, right after landing for the best speed boost
+5. Try to achieve the highest speed possible!
 
 ## Customization
 
 You can modify the following parameters in the code to adjust the bunnyhopping mechanics:
 
-- `max_speed_multiplier`: Maximum speed multiplier (default: 2.5)
-- `per_hop_multiplier_amount`: How much speed boost you get per hop (default: 0.15)
+- `max_speed_multiplier`: Maximum speed multiplier (default: 3.0)
+- `per_hop_multiplier_amount`: How much speed boost you get per hop (default: 0.25)
 - `diminish_value`: How quickly speed decays (default: 0.05)
-- `jump_upwards_speed`: How high each jump goes (default: 0.2)
-- `max_jump_time`: Maximum duration of a jump (default: 0.5)
-- `jump_cooldown_max`: Time between jumps (default: 0.1) 
+- `jump_cooldown_max`: Time between jumps (default: 0.2) 

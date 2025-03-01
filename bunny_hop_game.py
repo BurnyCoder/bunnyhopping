@@ -13,68 +13,89 @@ class BunnyHopController(FirstPersonController):
         
         # Bunnyhopping specific variables
         self.original_speed = self.speed
-        self.jump_upwards_speed = 0.2
         self.speed_multiplier = 1.0
-        self.max_speed_multiplier = 2.5
-        self.per_hop_multiplier_amount = 0.15
+        self.max_speed_multiplier = 3.0
+        self.per_hop_multiplier_amount = 0.25
         self.diminish_value = 0.05
-        self.is_jumping = False
-        self.jump_time = 0
-        self.max_jump_time = 0.5
         self.jump_cooldown = 0
-        self.jump_cooldown_max = 0.1
+        self.jump_cooldown_max = 0.2
+        
+        # Jump state tracking
+        self.was_grounded = True
+        self.jump_count = 0
+        self.last_jump_time = 0
         
         # For calculating speed display
         self.last_position = Vec3(self.position)
         self.velocity = Vec3(0, 0, 0)
+        self.bhop_enabled = False
 
     def update(self):
+        # Always let parent update run first for physics and camera movement
+        super().update()
+        
         # Calculate velocity for display
         self.velocity = self.position - self.last_position
         self.last_position = Vec3(self.position.x, self.position.y, self.position.z)
         
-        # Handle bunnyhopping
-        if held_keys['space']:
-            if self.grounded and self.jump_cooldown <= 0:
-                # Start a new jump from the ground
-                self.is_jumping = True
-                self.jump_time = 0
-                self.jump_cooldown = self.jump_cooldown_max
-                
-                # Increase speed multiplier for each jump
-                self.speed_multiplier = min(self.max_speed_multiplier, 
-                                           self.speed_multiplier + self.per_hop_multiplier_amount)
-            
-            if self.is_jumping:
-                self.jump_time += time.dt
-                
-                # Apply upward movement during jump
-                self.y += self.jump_upwards_speed
-                
-                # Apply forward movement with boosted speed
-                move_direction = self.get_movement_direction()
-                if move_direction.length() > 0:
-                    # Apply directional movement with speed boost
-                    self.position += move_direction * self.original_speed * self.speed_multiplier * time.dt
-                
-                # End jump after max time
-                if self.jump_time >= self.max_jump_time:
-                    self.is_jumping = False
-        else:
-            # Not holding space
-            self.is_jumping = False
-            
-        # Decrease jump cooldown
+        # Update jump cooldown
         if self.jump_cooldown > 0:
             self.jump_cooldown -= time.dt
+        
+        # Track landing for combo jumps
+        if not self.was_grounded and self.grounded:
+            # Just landed
+            self.jump_cooldown = 0  # Allow immediate jump on landing for combos
+        
+        # Handle bunnyhopping
+        if held_keys['space']:
+            # Enable bunnyhopping mode
+            self.bhop_enabled = True
             
-        # Gradually decrease speed multiplier when not jumping or not moving
-        if (not self.is_jumping or not any(held_keys[key] for key in ['w', 'a', 's', 'd'])) and self.speed_multiplier > 1.0:
+            # Jump if grounded and cooldown is over
+            if self.grounded and self.jump_cooldown <= 0:
+                self.jump()
+                self.jump_cooldown = self.jump_cooldown_max
+                self.last_jump_time = time.time()
+                self.jump_count += 1
+                
+                # Increase multiplier - higher boost for consecutive jumps
+                if self.jump_count > 1:
+                    # Bonus for consecutive jumps
+                    self.speed_multiplier = min(self.max_speed_multiplier, 
+                                              self.speed_multiplier + self.per_hop_multiplier_amount)
+                else:
+                    # First jump bonus is smaller
+                    self.speed_multiplier = min(self.max_speed_multiplier,
+                                              self.speed_multiplier + self.per_hop_multiplier_amount * 0.5)
+            
+            # Apply speed boost every frame while bunnyhopping with movement
+            if any(held_keys[key] for key in ['w', 'a', 's', 'd']):
+                self.apply_speed_boost()
+        else:
+            self.bhop_enabled = False
+            self.jump_count = 0  # Reset jump count if space released
+            
+        # Reset jump count if on ground too long without jumping
+        if self.grounded and time.time() - self.last_jump_time > 0.5:
+            self.jump_count = 0
+            
+        # Gradually decrease speed multiplier when not bunnyhopping or not moving
+        if (not self.bhop_enabled or not any(held_keys[key] for key in ['w', 'a', 's', 'd'])) and self.speed_multiplier > 1.0:
             self.speed_multiplier = max(1.0, self.speed_multiplier - self.diminish_value * time.dt)
         
-        # Only use the parent class update if not bunnyhopping
-        if not self.is_jumping:
-            super().update()
+        # Update grounded state
+        self.was_grounded = self.grounded
+    
+    def apply_speed_boost(self):
+        """Apply extra velocity based on direction and speed multiplier"""
+        # Get movement direction
+        move_direction = self.get_movement_direction()
+        if move_direction.length() > 0:
+            # Calculate boosted movement - apply full multiplier for better feel
+            extra_speed = move_direction * self.original_speed * (self.speed_multiplier - 1.0) * time.dt * 1.5
+            # Apply the extra speed by updating position
+            self.position += extra_speed
     
     def get_movement_direction(self):
         """Calculate the movement direction based on key inputs"""
@@ -94,11 +115,6 @@ class BunnyHopController(FirstPersonController):
             )
         
         return move_direction
-    
-    def input(self, key):
-        # Only pass input to parent if not currently bunnyhopping
-        if not self.is_jumping:
-            super().input(key)
 
 
 class Game:
