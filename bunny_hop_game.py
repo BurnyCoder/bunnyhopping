@@ -16,7 +16,8 @@ class BunnyHopController(FirstPersonController):
         self.speed_multiplier = 1.0
         self.max_speed_multiplier = float('inf')
         self.per_hop_multiplier_amount = 0.25
-        self.diminish_value = 0.05
+        self.diminish_value = 0.05  # Regular diminishing rate
+        self.long_distance_diminish = 0.01  # Lower diminishing rate for long-distance travel
         self.jump_cooldown = 0
         self.jump_cooldown_max = 0.2
         
@@ -29,6 +30,10 @@ class BunnyHopController(FirstPersonController):
         self.last_position = Vec3(self.position)
         self.velocity = Vec3(0, 0, 0)
         self.bhop_enabled = False
+        
+        # For handling long-distance travel
+        self.distance_traveled = 0
+        self.long_distance_mode = False
 
     def update(self):
         # Always let parent update run first for physics and camera movement
@@ -37,6 +42,13 @@ class BunnyHopController(FirstPersonController):
         # Calculate velocity for display
         self.velocity = self.position - self.last_position
         self.last_position = Vec3(self.position.x, self.position.y, self.position.z)
+        
+        # Update distance traveled (only horizontal distance)
+        horizontal_velocity = Vec2(self.velocity.x, self.velocity.z)
+        self.distance_traveled += horizontal_velocity.length()
+        
+        # Switch to long-distance mode if player has traveled far
+        self.long_distance_mode = self.distance_traveled > 500
         
         # Update jump cooldown
         if self.jump_cooldown > 0:
@@ -82,7 +94,9 @@ class BunnyHopController(FirstPersonController):
             
         # Gradually decrease speed multiplier when not bunnyhopping or not moving
         if (not self.bhop_enabled or not any(held_keys[key] for key in ['w', 'a', 's', 'd'])) and self.speed_multiplier > 1.0:
-            self.speed_multiplier = max(1.0, self.speed_multiplier - self.diminish_value * time.dt)
+            # Use different diminish rates for long-distance travel
+            diminish_rate = self.long_distance_diminish if self.long_distance_mode else self.diminish_value
+            self.speed_multiplier = max(1.0, self.speed_multiplier - diminish_rate * time.dt)
         
         # Update grounded state
         self.was_grounded = self.grounded
@@ -204,15 +218,19 @@ class Game:
             self.distance_text.color = color.white
 
     def create_base_ground(self):
-        # Create a much larger ground plane
+        # Instead of a single large ground, create a ground that follows the player
         self.main_ground = Entity(
             model='plane',
-            scale=(1000, 1, 1000),  # 10x larger than before
+            scale=(1000, 1, 1000),
             color=color.gray,
             texture='white_cube',
             texture_scale=(1000, 1000),
             collider='box'
         )
+        
+        # Create a ground update entity
+        self.ground_updater = Entity()
+        self.ground_updater.update = self.update_ground
         
         # Add some landmarks at the origin to mark the starting point
         Entity(
@@ -236,14 +254,23 @@ class Game:
                 texture='white_cube',
                 collider='box'
             )
-            
+    
+    def update_ground(self):
+        # Update the main ground position to follow the player
+        # Only update X and Z, keep Y at 0
+        self.main_ground.position = Vec3(
+            self.player.position.x,
+            0,
+            self.player.position.z
+        )
+    
     def create_procedural_environment(self):
         # Remove the boundary walls to allow infinite movement
         
         # Store all generated chunks
         self.chunks = {}
         self.chunk_size = 40  # Size of each terrain chunk
-        self.render_distance = 3  # How many chunks to render in each direction
+        self.render_distance = 4  # Increased render distance (was 3)
         
         # Create initial chunks around the player
         self.generate_chunks_around_player()
@@ -260,6 +287,15 @@ class Game:
         # Generate or destroy chunks based on distance from player
         self.generate_chunks_around_player()
         self.remove_distant_chunks(player_chunk_x, player_chunk_z)
+        
+        # Debug display in console every 5 seconds
+        if not hasattr(self, 'last_debug_time'):
+            self.last_debug_time = time.time()
+        
+        if time.time() - self.last_debug_time > 5:
+            distance = Vec2(self.player.position.x, self.player.position.z).length()
+            print(f"Current position: {self.player.position}, Distance: {distance:.1f}m, Chunks: {len(self.chunks)}")
+            self.last_debug_time = time.time()
     
     def generate_chunks_around_player(self):
         # Get player's current chunk coordinates
