@@ -38,15 +38,31 @@ Bunnyhopping is a movement technique where continuous jumping increases your mov
 3. Consecutive jumps receive a bigger speed boost than the first jump
 4. The speed boost applies while moving in any direction
 5. Your speed bonus decays if you stop jumping or stop moving
+6. Speed decay slows down during long-distance travel for a smoother experience
+7. There is no cap on maximum speed - how fast can you go?
 
 The key to achieving maximum speed is to time your jumps perfectly - try to jump immediately after landing!
 
 ## Features
 
 - First-person perspective
-- Bunnyhopping mechanics with progressive speed boost
+- Uncapped bunnyhopping mechanics with progressive speed boost
 - Speed counter and multiplier display
-- Simple 3D environment with obstacles
+- Distance traveled counter with color-coded milestones
+- Procedurally generated infinite environment
+- Various terrain types based on distance from origin
+- Special landmarks at starting point for orientation
+
+## Terrain Features
+
+As you travel further from the starting point:
+- Environment changes with different obstacle density
+- You'll encounter specialized terrain types including:
+  - Normal terrain with standard obstacles
+  - Sparse areas with minimal obstacles
+  - Dense areas with many obstacles
+  - Ramp fields with elevated platforms and jumps
+  - Platform fields with vertical challenges
 
 ## How to Play
 
@@ -55,12 +71,14 @@ The key to achieving maximum speed is to time your jumps perfectly - try to jump
 3. To bunnyhop, hold W (or any movement key) and **hold** the space bar
 4. Try to jump in a rhythm, right after landing for the best speed boost
 5. Try to achieve the highest speed possible!
+6. See how far you can travel - watch the distance counter change colors at milestones!
 
 ## Customization
 
 You can modify the following parameters in the code to adjust the bunnyhopping mechanics:
 
-- `max_speed_multiplier`: Maximum speed multiplier (default: 3.0)
+- `max_speed_multiplier`: Maximum speed multiplier (default: uncapped)
 - `per_hop_multiplier_amount`: How much speed boost you get per hop (default: 0.25)
-- `diminish_value`: How quickly speed decays (default: 0.05)
+- `diminish_value`: Regular speed decay rate (default: 0.05)
+- `long_distance_diminish`: Reduced decay rate for long-distance travel (default: 0.01)
 - `jump_cooldown_max`: Time between jumps (default: 0.2) 
