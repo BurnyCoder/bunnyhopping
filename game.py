@@ -35,8 +35,3 @@ class Game:
     def run(self):
         """Run the game."""
         self.app.run()
-
-
-if __name__ == '__main__':
-    # This will be moved to main.py
-    pass 
