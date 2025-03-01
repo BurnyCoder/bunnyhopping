@@ -222,9 +222,8 @@ class Game:
         self.main_ground = Entity(
             model='plane',
             scale=(1000, 1, 1000),
-            color=color.gray,
-            texture='white_cube',
-            texture_scale=(1000, 1000),
+            color=color.rgb(50, 50, 60),  # Dark blue-gray monolithic color
+            # Removed texture for a solid color appearance
             collider='box'
         )
         
