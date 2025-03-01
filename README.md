@@ -1,46 +1,58 @@
 # Simple 3D First-Person Game
 
-A minimalist 3D first-person game created with Ursina in Python.
+A minimal 3D first-person game created with Ursina Engine in Python.
 
 ## Features
+
 - First-person perspective
-- Walking controls (WASD)
-- Simple 3D environment
-- Basic collision detection
-- Collectible items
-- A goal to reach
-- Score tracking
+- 3D environment with basic obstacles
+- WASD movement
+- Mouse look
+- Jumping with spacebar
+- Collision detection
 
 ## Requirements
+
 - Python 3.7+
-- Dependencies listed in requirements.txt
+- Ursina Engine
 
 ## Installation
 
-1. Clone this repository
-2. Install requirements:
+1. Clone this repository:
+   ```
+   git clone https://github.com/yourusername/simple-fps-game.git
+   cd simple-fps-game
+   ```
+
+2. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+## Running the Game
+
+Run the game using:
+
 ```
-pip install -r requirements.txt
+python simple_fps_game.py
 ```
 
-## How to Play
+## Controls
 
-Run the game using the launcher script:
-```
-./run.py
-```
+- **W, A, S, D**: Move around
+- **Mouse**: Look around
+- **Space**: Jump
+- **Shift**: Sprint
+- **Escape**: Exit the game
 
-Or run the game directly with Python:
-```
-python game.py
-```
+## Customization
 
-### Gameplay
-1. Collect all the golden spheres
-2. Find and reach the pulsing blue cube (goal)
-3. Win the game!
+Feel free to modify the game by:
+- Adding more obstacles
+- Changing colors and textures
+- Adjusting player movement speed and jump height
+- Adding game objectives or collectibles
 
-### Controls
-- W, A, S, D: Move
-- Mouse: Look around
-- ESC: Exit game or release mouse cursor 
+## Credits
+
+Built with [Ursina Engine](https://www.ursinaengine.org/), a game engine built on top of Panda3D. 
