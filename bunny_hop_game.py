@@ -14,7 +14,7 @@ class BunnyHopController(FirstPersonController):
         # Bunnyhopping specific variables
         self.original_speed = self.speed
         self.speed_multiplier = 1.0
-        self.max_speed_multiplier = 3.0
+        self.max_speed_multiplier = float('inf')
         self.per_hop_multiplier_amount = 0.25
         self.diminish_value = 0.05
         self.jump_cooldown = 0
@@ -178,7 +178,10 @@ class Game:
         multiplier = round(self.player.speed_multiplier, 2)
         
         # Set color based on multiplier (green to yellow to red as speed increases)
-        normalized_multiplier = (self.player.speed_multiplier - 1.0) / (self.player.max_speed_multiplier - 1.0)
+        # Now with adjusted ranges for the uncapped multiplier
+        capped_multiplier = min(10.0, self.player.speed_multiplier)  # Cap color changes at 10x
+        normalized_multiplier = (capped_multiplier - 1.0) / 9.0  # Range 1.0 to 10.0 maps to 0.0 to 1.0
+        
         speed_color = color.rgb(
             255 * min(1, normalized_multiplier * 2),  # Red increases faster
             255 * max(0, 1 - normalized_multiplier),  # Green decreases as we go faster
