@@ -154,15 +154,40 @@ class Game:
             color=color.yellow
         )
         
-        # Update speed display
-        def update_speed():
-            # Calculate horizontal speed (ignoring vertical movement)
-            horizontal_velocity = Vec2(self.player.velocity.x, self.player.velocity.z)
-            speed = round(horizontal_velocity.length() * 50, 2)  # Scale for display
-            multiplier = round(self.player.speed_multiplier, 2)
-            self.speed_text.text = f"Speed: {speed} | Multiplier: {multiplier}x"
+        # Create an entity to handle updates
+        self.ui_updater = Entity()
+        self.ui_updater.update = self.update_speed
+    
+    def update_speed(self):
+        # Calculate horizontal speed (ignoring vertical movement)
+        horizontal_velocity = Vec2(self.player.velocity.x, self.player.velocity.z)
         
-        self.update_speed = update_speed
+        # Calculate speed - use a better scaling factor based on the original player speed
+        speed_factor = 50 / self.player.original_speed  # Normalize to make display more intuitive
+        raw_speed = horizontal_velocity.length() * speed_factor
+        
+        # Apply some smoothing for better display
+        if hasattr(self, 'displayed_speed'):
+            # Smooth transition between speed values (lerp)
+            self.displayed_speed = lerp(self.displayed_speed, raw_speed, time.dt * 5)
+        else:
+            self.displayed_speed = raw_speed
+            
+        # Round for display
+        speed = round(self.displayed_speed, 1)
+        multiplier = round(self.player.speed_multiplier, 2)
+        
+        # Set color based on multiplier (green to yellow to red as speed increases)
+        normalized_multiplier = (self.player.speed_multiplier - 1.0) / (self.player.max_speed_multiplier - 1.0)
+        speed_color = color.rgb(
+            255 * min(1, normalized_multiplier * 2),  # Red increases faster
+            255 * max(0, 1 - normalized_multiplier),  # Green decreases as we go faster
+            0  # No blue
+        )
+        
+        # Update the text
+        self.speed_text.text = f"Speed: {speed} | Multiplier: {multiplier}x"
+        self.speed_text.color = speed_color
     
     def create_environment(self):
         # Create ground plane
@@ -211,13 +236,6 @@ class Game:
             )
     
     def run(self):
-        # Set up the update function
-        def update():
-            self.update_speed()
-        
-        # Register the update function
-        self.app.update = update
-        
         # Run the app
         self.app.run()
 
