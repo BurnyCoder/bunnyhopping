@@ -2,6 +2,8 @@
 
 A simple 3D first-person game with bunnyhopping mechanics built using the Ursina Engine.
 
+![game](https://github.com/user-attachments/assets/c02b3de1-79e5-497e-a47e-92da3fcc0544)
+
 ## Requirements
 
 - Python 3.7+
