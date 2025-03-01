@@ -128,8 +128,12 @@ class Game:
         window.exit_button.visible = False
         window.fps_counter.enabled = True
         
-        # Create simple environment
-        self.create_environment()
+        # Fog is now disabled
+        # scene.fog_color = color.rgb(150, 170, 200)
+        # scene.fog_density = 0.01
+        
+        # Create initial ground only
+        self.create_base_ground()
         
         # Add player with bunnyhop controller
         self.player = BunnyHopController(
@@ -137,6 +141,12 @@ class Game:
             collider='box',
             speed=8
         )
+        
+        # Set initial player position for distance tracking
+        self.initial_player_position = Vec3(self.player.position)
+        
+        # Now create the procedural environment around the player
+        self.create_procedural_environment()
         
         # Instructions text
         self.instructions = Text(
@@ -154,9 +164,279 @@ class Game:
             color=color.yellow
         )
         
+        # Distance traveled display
+        self.distance_text = Text(
+            text="Distance: 0 meters",
+            origin=(0, 0),
+            position=(0, 0.3),
+            color=color.white
+        )
+        
         # Create an entity to handle updates
         self.ui_updater = Entity()
-        self.ui_updater.update = self.update_speed
+        self.ui_updater.update = self.update_ui
+    
+    def update_ui(self):
+        # Update speed
+        self.update_speed()
+        
+        # Update distance traveled
+        self.update_distance()
+    
+    def update_distance(self):
+        # Calculate distance from starting point (ignoring Y for better measurement)
+        start_pos_2d = Vec2(self.initial_player_position.x, self.initial_player_position.z)
+        current_pos_2d = Vec2(self.player.position.x, self.player.position.z)
+        distance = (current_pos_2d - start_pos_2d).length()
+        
+        # Round for display
+        distance_meters = round(distance, 1)
+        self.distance_text.text = f"Distance: {distance_meters} meters"
+        
+        # Change color based on distance milestones
+        if distance_meters > 1000:
+            self.distance_text.color = color.rgb(255, 215, 0)  # Gold color
+        elif distance_meters > 500:
+            self.distance_text.color = color.rgb(192, 192, 192)  # Silver color
+        elif distance_meters > 100:
+            self.distance_text.color = color.rgb(205, 127, 50)  # Bronze color
+        else:
+            self.distance_text.color = color.white
+
+    def create_base_ground(self):
+        # Create a much larger ground plane
+        self.main_ground = Entity(
+            model='plane',
+            scale=(1000, 1, 1000),  # 10x larger than before
+            color=color.gray,
+            texture='white_cube',
+            texture_scale=(1000, 1000),
+            collider='box'
+        )
+        
+        # Add some landmarks at the origin to mark the starting point
+        Entity(
+            model='sphere',
+            scale=3,
+            y=1.5,
+            color=color.cyan,
+            texture='white_cube'
+        )
+        
+        # Add a circle of pillars around the starting point
+        for i in range(8):
+            angle = i * math.pi / 4
+            x = math.cos(angle) * 15
+            z = math.sin(angle) * 15
+            Entity(
+                model='cube',
+                position=(x, 2.5, z),
+                scale=(1, 5, 1),
+                color=color.light_gray,
+                texture='white_cube',
+                collider='box'
+            )
+            
+    def create_procedural_environment(self):
+        # Remove the boundary walls to allow infinite movement
+        
+        # Store all generated chunks
+        self.chunks = {}
+        self.chunk_size = 40  # Size of each terrain chunk
+        self.render_distance = 3  # How many chunks to render in each direction
+        
+        # Create initial chunks around the player
+        self.generate_chunks_around_player()
+        
+        # Add terrain generation system to follow the player
+        self.terrain_generator = Entity()
+        self.terrain_generator.update = self.update_terrain
+    
+    def update_terrain(self):
+        # Get player's current chunk coordinates
+        player_chunk_x = int(self.player.position.x // self.chunk_size)
+        player_chunk_z = int(self.player.position.z // self.chunk_size)
+        
+        # Generate or destroy chunks based on distance from player
+        self.generate_chunks_around_player()
+        self.remove_distant_chunks(player_chunk_x, player_chunk_z)
+    
+    def generate_chunks_around_player(self):
+        # Get player's current chunk coordinates
+        player_chunk_x = int(self.player.position.x // self.chunk_size)
+        player_chunk_z = int(self.player.position.z // self.chunk_size)
+        
+        # Generate chunks in render distance
+        for x in range(player_chunk_x - self.render_distance, player_chunk_x + self.render_distance + 1):
+            for z in range(player_chunk_z - self.render_distance, player_chunk_z + self.render_distance + 1):
+                chunk_key = f"{x}_{z}"
+                
+                # Only generate if the chunk doesn't exist
+                if chunk_key not in self.chunks:
+                    self.generate_chunk(x, z, chunk_key)
+    
+    def generate_chunk(self, chunk_x, chunk_z, chunk_key):
+        # Calculate world position of chunk
+        world_x = chunk_x * self.chunk_size
+        world_z = chunk_z * self.chunk_size
+        
+        # Create a parent entity for all objects in this chunk
+        chunk_parent = Entity(position=(0, 0, 0))
+        self.chunks[chunk_key] = chunk_parent
+        
+        # Calculate distance from origin for variety
+        distance_from_origin = math.sqrt(chunk_x**2 + chunk_z**2)
+        
+        # Generate random obstacles in the chunk
+        num_obstacles = random.randint(3, 8)  # Random number of obstacles per chunk
+        
+        # Add terrain variety based on distance
+        terrain_type = 'normal'
+        if distance_from_origin > 10:
+            # Far chunks have special terrain types
+            terrain_type = random.choice(['normal', 'sparse', 'dense', 'ramp_field', 'platform_field'])
+        
+        # Create different terrain types
+        if terrain_type == 'sparse':
+            num_obstacles = random.randint(1, 3)
+        elif terrain_type == 'dense':
+            num_obstacles = random.randint(8, 15)
+        elif terrain_type == 'ramp_field':
+            num_obstacles = random.randint(5, 10)
+            # Higher chance of ramps
+            ramp_chance = 0.7
+        elif terrain_type == 'platform_field':
+            num_obstacles = random.randint(5, 10)
+            # Higher chance of platforms
+            platform_chance = 0.7
+        else:
+            # Normal terrain with standard obstacle distribution
+            ramp_chance = 0.3
+            platform_chance = 0.3
+        
+        for _ in range(num_obstacles):
+            # Random position within the chunk
+            local_x = random.uniform(0, self.chunk_size)
+            local_z = random.uniform(0, self.chunk_size)
+            
+            # Create obstacle
+            block_height = random.uniform(1, 5)  # Varying heights
+            
+            # Avoid placing obstacles too close to the player's starting position
+            if (chunk_x == 0 and chunk_z == 0 and 
+                abs(local_x) < 10 and abs(local_z) < 10):
+                continue
+                
+            # Create the block with a random color
+            block_color = color.random_color()
+            if distance_from_origin > 5:
+                # Add some theme colors based on distance
+                hue = (distance_from_origin * 0.05) % 1.0
+                block_color = color.hsv(hue, 0.7, 0.8)
+                
+            Entity(
+                model='cube',
+                color=block_color,
+                position=(world_x + local_x, block_height/2, world_z + local_z),
+                scale=(random.uniform(2, 4), block_height, random.uniform(2, 4)),
+                texture='white_cube',
+                collider='box',
+                parent=chunk_parent
+            )
+            
+            # Occasionally add a ramp or special structure
+            if random.random() < (ramp_chance if 'ramp_chance' in locals() else 0.3):
+                ramp_type = random.choice(['ramp', 'platform', 'arch'])
+                
+                if terrain_type == 'ramp_field':
+                    ramp_type = 'ramp'
+                elif terrain_type == 'platform_field':
+                    ramp_type = 'platform'
+                
+                if ramp_type == 'ramp':
+                    # Create a ramp
+                    ramp_height = random.uniform(2, 4)
+                    ramp_length = random.uniform(4, 8)
+                    
+                    Entity(
+                        model='cube',
+                        color=color.orange,
+                        position=(world_x + local_x + ramp_length/2, ramp_height/2, world_z + local_z + 5),
+                        scale=(ramp_length, ramp_height, 3),
+                        rotation=(0, 0, -15),  # Tilted to create a ramp
+                        texture='white_cube',
+                        collider='box',
+                        parent=chunk_parent
+                    )
+                    
+                elif ramp_type == 'platform':
+                    # Create a platform
+                    platform_height = random.uniform(2, 6)
+                    
+                    Entity(
+                        model='cube',
+                        color=color.azure,
+                        position=(world_x + local_x, platform_height, world_z + local_z + 5),
+                        scale=(4, 1, 4),
+                        texture='white_cube',
+                        collider='box',
+                        parent=chunk_parent
+                    )
+                    
+                elif ramp_type == 'arch':
+                    # Create an arch
+                    arch_height = random.uniform(4, 6)
+                    
+                    # Left pillar
+                    Entity(
+                        model='cube',
+                        color=color.violet,
+                        position=(world_x + local_x - 3, arch_height/2, world_z + local_z + 5),
+                        scale=(1, arch_height, 1),
+                        texture='white_cube',
+                        collider='box',
+                        parent=chunk_parent
+                    )
+                    
+                    # Right pillar
+                    Entity(
+                        model='cube',
+                        color=color.violet,
+                        position=(world_x + local_x + 3, arch_height/2, world_z + local_z + 5),
+                        scale=(1, arch_height, 1),
+                        texture='white_cube',
+                        collider='box',
+                        parent=chunk_parent
+                    )
+                    
+                    # Top
+                    Entity(
+                        model='cube',
+                        color=color.violet,
+                        position=(world_x + local_x, arch_height, world_z + local_z + 5),
+                        scale=(7, 1, 1),
+                        texture='white_cube',
+                        collider='box',
+                        parent=chunk_parent
+                    )
+    
+    def remove_distant_chunks(self, player_chunk_x, player_chunk_z):
+        # Remove chunks that are too far from the player
+        chunks_to_remove = []
+        
+        for chunk_key in self.chunks:
+            x, z = map(int, chunk_key.split('_'))
+            
+            # Check if chunk is outside render distance
+            if (abs(x - player_chunk_x) > self.render_distance + 1 or 
+                abs(z - player_chunk_z) > self.render_distance + 1):
+                chunks_to_remove.append(chunk_key)
+        
+        # Destroy the chunks that are too far
+        for chunk_key in chunks_to_remove:
+            if chunk_key in self.chunks:
+                destroy(self.chunks[chunk_key])
+                del self.chunks[chunk_key]
     
     def update_speed(self):
         # Calculate horizontal speed (ignoring vertical movement)
@@ -191,52 +471,6 @@ class Game:
         # Update the text
         self.speed_text.text = f"Speed: {speed} | Multiplier: {multiplier}x"
         self.speed_text.color = speed_color
-    
-    def create_environment(self):
-        # Create ground plane
-        ground = Entity(
-            model='plane',
-            scale=(100, 1, 100),
-            color=color.gray,
-            texture='white_cube',
-            texture_scale=(100, 100),
-            collider='box'
-        )
-        
-        # Add some obstacles and landmarks to the environment
-        for i in range(-5, 6, 2):
-            for j in range(-5, 6, 2):
-                if i == 0 and j == 0:
-                    continue  # Skip center where player spawns
-                
-                # Create random colored blocks
-                block_height = random.uniform(1, 3)
-                Entity(
-                    model='cube',
-                    color=color.random_color(),
-                    position=(i * 8, block_height/2, j * 8),
-                    scale=(2, block_height, 2),
-                    texture='white_cube',
-                    collider='box'
-                )
-        
-        # Create walls around the environment
-        wall_height = 5
-        wall_positions = [
-            (0, wall_height/2, -50, 100, wall_height, 1),  # North wall
-            (0, wall_height/2, 50, 100, wall_height, 1),   # South wall
-            (-50, wall_height/2, 0, 1, wall_height, 100),  # West wall
-            (50, wall_height/2, 0, 1, wall_height, 100),   # East wall
-        ]
-        
-        for x, y, z, sx, sy, sz in wall_positions:
-            Entity(
-                model='cube',
-                color=color.azure,
-                position=(x, y, z),
-                scale=(sx, sy, sz),
-                collider='box'
-            )
     
     def run(self):
         # Run the app
